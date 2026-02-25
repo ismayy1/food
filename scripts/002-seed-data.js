@@ -44,13 +44,13 @@ async function seed() {
 
   // Seed a couple of sample orders
   const orders = [
-    { customer_name: "Ion Barbu", customer_phone: "0722111222", items: JSON.stringify([{ name: "Classic Falafel Wrap", quantity: 2, price: 22 }, { name: "Fresh Lemonade", quantity: 2, price: 12 }]), total: 68, status: "delivered", notes: "" },
-    { customer_name: "Ana Marin", customer_phone: "0733222333", items: JSON.stringify([{ name: "Falafel Platter", quantity: 1, price: 35 }, { name: "Creamy Hummus", quantity: 1, price: 15 }, { name: "Ayran", quantity: 1, price: 10 }]), total: 60, status: "delivered", notes: "Extra tahini please" },
-    { customer_name: "Vlad Enescu", customer_phone: "0744333444", items: JSON.stringify([{ name: "Spicy Falafel Wrap", quantity: 1, price: 25 }, { name: "Turkish Tea", quantity: 1, price: 8 }]), total: 33, status: "preparing", notes: "" },
+    { customer_name: "Ion Barbu", customer_phone: "0722111222", order_type: "pickup", items: JSON.stringify([{ name: "Classic Falafel Wrap", quantity: 2, price: 22 }, { name: "Fresh Lemonade", quantity: 2, price: 12 }]), total: 68, status: "delivered", notes: "" },
+    { customer_name: "Ana Marin", customer_phone: "0733222333", order_type: "delivery", items: JSON.stringify([{ name: "Falafel Platter", quantity: 1, price: 35 }, { name: "Creamy Hummus", quantity: 1, price: 15 }, { name: "Ayran", quantity: 1, price: 10 }]), total: 60, status: "delivered", notes: "Extra tahini please" },
+    { customer_name: "Vlad Enescu", customer_phone: "0744333444", order_type: "pickup", items: JSON.stringify([{ name: "Spicy Falafel Wrap", quantity: 1, price: 25 }, { name: "Turkish Tea", quantity: 1, price: 8 }]), total: 33, status: "preparing", notes: "" },
   ];
 
   for (const order of orders) {
-    await sql`INSERT INTO orders (customer_name, customer_phone, items, total, status, notes) VALUES (${order.customer_name}, ${order.customer_phone}, ${order.items}, ${order.total}, ${order.status}, ${order.notes})`;
+    await sql`INSERT INTO orders (customer_name, phone, order_type, items, total, status, notes) VALUES (${order.customer_name}, ${order.customer_phone}, ${order.order_type}, ${order.items}, ${order.total}, ${order.status}, ${order.notes})`;
   }
   console.log(`Seeded ${orders.length} orders`);
 
