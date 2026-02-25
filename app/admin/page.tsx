@@ -1,89 +1,93 @@
 "use client";
 
+import useSWR from "swr";
 import {
   DollarSign,
   ShoppingCart,
   UtensilsCrossed,
   Star,
-  TrendingUp,
   ArrowUpRight,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-const stats = [
-  {
-    label: "Today's Revenue",
-    value: "2,450 lei",
-    change: "+12%",
-    icon: DollarSign,
-    href: "/admin/analytics",
-  },
-  {
-    label: "Active Orders",
-    value: "8",
-    change: "+3",
-    icon: ShoppingCart,
-    href: "/admin/orders",
-  },
-  {
-    label: "Menu Items",
-    value: "15",
-    change: "3 popular",
-    icon: UtensilsCrossed,
-    href: "/admin/menu",
-  },
-  {
-    label: "Avg. Rating",
-    value: "4.6",
-    change: "293 reviews",
-    icon: Star,
-    href: "/admin/reviews",
-  },
-];
+interface DashboardData {
+  menuItemCount: number;
+  popularCount: number;
+  totalOrders: number;
+  activeOrders: number;
+  todayRevenue: number;
+  reviewCount: number;
+  avgRating: number;
+  recentOrders: {
+    id: string;
+    customer: string;
+    items: { name: string; quantity: number; price: number }[];
+    total: string;
+    status: string;
+    time: string;
+  }[];
+}
 
-const recentOrders = [
-  {
-    id: "ORD-001",
-    customer: "Maria I.",
-    items: "2x Classic Wrap, 1x Hummus",
-    total: "59 lei",
-    status: "Preparing",
-    time: "5 min ago",
-  },
-  {
-    id: "ORD-002",
-    customer: "Alex P.",
-    items: "1x Family Combo",
-    total: "65 lei",
-    status: "Ready",
-    time: "12 min ago",
-  },
-  {
-    id: "ORD-003",
-    customer: "Sophie L.",
-    items: "1x Spicy Wrap, 1x Lemonade",
-    total: "37 lei",
-    status: "Delivered",
-    time: "25 min ago",
-  },
-  {
-    id: "ORD-004",
-    customer: "Andrei D.",
-    items: "1x Mixed Platter, 2x Ayran",
-    total: "60 lei",
-    status: "Preparing",
-    time: "3 min ago",
-  },
-];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const statusColors: Record<string, string> = {
   Preparing: "bg-accent text-accent-foreground",
   Ready: "bg-primary/15 text-primary",
   Delivered: "bg-secondary text-secondary-foreground",
   Cancelled: "bg-destructive/15 text-destructive",
+  Pending: "bg-accent text-accent-foreground",
 };
 
 export default function AdminDashboard() {
+  const { data, isLoading } = useSWR<DashboardData>("/api/dashboard", fetcher, {
+    refreshInterval: 15000,
+  });
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const stats = [
+    {
+      label: "Today's Revenue",
+      value: `${data.todayRevenue.toLocaleString()} lei`,
+      change: `${data.totalOrders} total orders`,
+      icon: DollarSign,
+      href: "/admin/analytics",
+    },
+    {
+      label: "Active Orders",
+      value: String(data.activeOrders),
+      change: `${data.totalOrders} total`,
+      icon: ShoppingCart,
+      href: "/admin/orders",
+    },
+    {
+      label: "Menu Items",
+      value: String(data.menuItemCount),
+      change: `${data.popularCount} popular`,
+      icon: UtensilsCrossed,
+      href: "/admin/menu",
+    },
+    {
+      label: "Avg. Rating",
+      value: String(data.avgRating),
+      change: `${data.reviewCount} reviews`,
+      icon: Star,
+      href: "/admin/reviews",
+    },
+  ];
+
+  function formatItems(items: { name: string; quantity: number; price: number }[]): string {
+    if (!Array.isArray(items)) return String(items);
+    return items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+  }
+
   return (
     <div>
       <div className="mb-8">
@@ -163,7 +167,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {recentOrders.map((order) => (
+                {data.recentOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-muted/50">
                     <td className="px-4 py-3 text-sm font-medium text-card-foreground">
                       {order.id}
@@ -172,7 +176,7 @@ export default function AdminDashboard() {
                       {order.customer}
                     </td>
                     <td className="hidden px-4 py-3 text-sm text-muted-foreground md:table-cell">
-                      {order.items}
+                      {formatItems(order.items)}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-card-foreground">
                       {order.total}
@@ -194,6 +198,11 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+          {data.recentOrders.length === 0 && (
+            <div className="py-12 text-center text-muted-foreground">
+              No orders yet.
+            </div>
+          )}
         </div>
       </div>
     </div>

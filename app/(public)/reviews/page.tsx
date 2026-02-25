@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Star } from "lucide-react";
-import { reviews, businessInfo } from "@/lib/data";
+import { businessInfo } from "@/lib/data";
+import { getVisibleReviews } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Reviews | Falafilo Food - Customer Testimonials",
@@ -8,7 +9,11 @@ export const metadata: Metadata = {
     "Read what our customers say about Falafilo Food. 4.6 star rating from 293 Google reviews.",
 };
 
-export default function ReviewsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ReviewsPage() {
+  const reviews = await getVisibleReviews();
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
       {/* Header */}
@@ -106,6 +111,12 @@ export default function ReviewsPage() {
           </div>
         ))}
       </div>
+
+      {reviews.length === 0 && (
+        <div className="py-12 text-center text-muted-foreground">
+          No reviews yet.
+        </div>
+      )}
 
       {/* Google Reviews CTA */}
       <div className="mt-12 text-center">

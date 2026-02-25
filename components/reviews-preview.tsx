@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Star, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { reviews, businessInfo } from "@/lib/data";
+import { businessInfo } from "@/lib/data";
+import { getVisibleReviews } from "@/lib/queries";
 
-export function ReviewsPreview() {
-  const featuredReviews = reviews.slice(0, 3);
+export async function ReviewsPreview() {
+  const allReviews = await getVisibleReviews();
+  const featuredReviews = allReviews.slice(0, 3);
 
   return (
     <section className="py-20">

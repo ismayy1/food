@@ -12,6 +12,7 @@ import {
   Truck,
   ArrowLeft,
   Check,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,12 +20,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/lib/cart-context";
-import { menuItems, categories } from "@/lib/data";
+import { categories, type MenuItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 type OrderMode = "pickup" | "delivery";
 
-export function OrderPageClient() {
+interface OrderPageClientProps {
+  initialItems: MenuItem[];
+}
+
+export function OrderPageClient({ initialItems }: OrderPageClientProps) {
   const {
     items: cartItems,
     addItem,
@@ -37,10 +42,46 @@ export function OrderPageClient() {
   const [activeCategory, setActiveCategory] = useState<string>("wraps");
   const [orderMode, setOrderMode] = useState<OrderMode>("pickup");
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [placing, setPlacing] = useState(false);
 
-  const filteredItems = menuItems.filter(
+  // Form fields
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
+
+  const filteredItems = initialItems.filter(
     (item) => item.category === activeCategory
   );
+
+  async function handlePlaceOrder() {
+    if (cartItems.length === 0 || !customerName || !customerPhone) return;
+    setPlacing(true);
+
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_name: customerName,
+          phone: customerPhone,
+          order_type: orderMode,
+          address: orderMode === "delivery" ? deliveryAddress : null,
+          notes: orderNotes,
+          items: cartItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          total: totalPrice + (orderMode === "delivery" ? 10 : 0),
+        }),
+      });
+
+      if (res.ok) {
+        setOrderPlaced(true);
+      }
+    } catch (error) {
+      console.error("Failed to place order:", error);
+    } finally {
+      setPlacing(false);
+    }
+  }
 
   if (orderPlaced) {
     return (
@@ -280,6 +321,33 @@ export function OrderPageClient() {
                   ))}
                 </div>
 
+                {/* Customer Details */}
+                <div className="mt-4 space-y-3 border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold text-card-foreground">
+                    Your Details
+                  </h3>
+                  <div>
+                    <Label htmlFor="name" className="text-xs">Name</Label>
+                    <Input
+                      id="name"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Your name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone" className="text-xs">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Your phone number"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
                 {/* Delivery Address */}
                 {orderMode === "delivery" && (
                   <div className="mt-4 space-y-3 border-t border-border pt-4">
@@ -292,23 +360,31 @@ export function OrderPageClient() {
                       </Label>
                       <Input
                         id="address"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
                         placeholder="Enter your address"
                         className="mt-1"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="notes" className="text-xs">
-                        Notes (optional)
-                      </Label>
-                      <Textarea
-                        id="notes"
-                        placeholder="Any special instructions?"
-                        className="mt-1"
-                        rows={2}
-                      />
-                    </div>
                   </div>
                 )}
+
+                {/* Notes */}
+                <div className="mt-4 space-y-3 border-t border-border pt-4">
+                  <div>
+                    <Label htmlFor="notes" className="text-xs">
+                      Notes (optional)
+                    </Label>
+                    <Textarea
+                      id="notes"
+                      value={orderNotes}
+                      onChange={(e) => setOrderNotes(e.target.value)}
+                      placeholder="Any special instructions?"
+                      className="mt-1"
+                      rows={2}
+                    />
+                  </div>
+                </div>
 
                 {/* Totals */}
                 <div className="mt-4 border-t border-border pt-4">
@@ -337,8 +413,10 @@ export function OrderPageClient() {
                 <Button
                   className="mt-4 w-full gap-2 rounded-xl"
                   size="lg"
-                  onClick={() => setOrderPlaced(true)}
+                  onClick={handlePlaceOrder}
+                  disabled={placing || !customerName || !customerPhone}
                 >
+                  {placing && <Loader2 className="h-4 w-4 animate-spin" />}
                   Place Order
                 </Button>
 

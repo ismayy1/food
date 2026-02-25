@@ -4,7 +4,9 @@ import { MenuPreview } from "@/components/menu-preview";
 import { ReviewsPreview } from "@/components/reviews-preview";
 import { CTASection } from "@/components/cta-section";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
   return (
     <>
       <HeroSection />

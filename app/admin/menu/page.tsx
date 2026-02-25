@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import useSWR from "swr";
 import {
   Plus,
   Pencil,
   Trash2,
   Search,
-  X,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,15 +29,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { menuItems as initialItems, type MenuItem, categories } from "@/lib/data";
+import { categories, type MenuItem } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export default function AdminMenuPage() {
-  const [items, setItems] = useState<MenuItem[]>(initialItems);
+  const { data: items = [], mutate, isLoading } = useSWR<MenuItem[]>("/api/menu", fetcher);
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -74,41 +78,60 @@ export default function AdminMenuPage() {
     setDialogOpen(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!formName || !formPrice) return;
+    setSaving(true);
 
-    if (editingItem) {
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === editingItem.id
-            ? {
-                ...i,
-                name: formName,
-                description: formDescription,
-                price: Number(formPrice),
-                category: formCategory,
-                popular: formPopular,
-              }
-            : i
-        )
-      );
-    } else {
-      const newItem: MenuItem = {
-        id: `item-${Date.now()}`,
-        name: formName,
-        description: formDescription,
-        price: Number(formPrice),
-        category: formCategory,
-        image: "/images/falafel-wrap.jpg",
-        popular: formPopular,
-      };
-      setItems((prev) => [...prev, newItem]);
+    try {
+      if (editingItem) {
+        await fetch(`/api/menu/${editingItem.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formName,
+            description: formDescription,
+            price: Number(formPrice),
+            category: formCategory,
+            popular: formPopular,
+          }),
+        });
+      } else {
+        await fetch("/api/menu", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formName,
+            description: formDescription,
+            price: Number(formPrice),
+            category: formCategory,
+            popular: formPopular,
+          }),
+        });
+      }
+      await mutate();
+      setDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save menu item:", error);
+    } finally {
+      setSaving(false);
     }
-    setDialogOpen(false);
   }
 
-  function handleDelete(id: string) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  async function handleDelete(id: string) {
+    try {
+      await fetch(`/api/menu/${id}`, { method: "DELETE" });
+      await mutate();
+    } catch (error) {
+      console.error("Failed to delete menu item:", error);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -208,7 +231,8 @@ export default function AdminMenuPage() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSave} className="rounded-xl">
+                <Button onClick={handleSave} className="gap-2 rounded-xl" disabled={saving}>
+                  {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                   {editingItem ? "Save Changes" : "Add Item"}
                 </Button>
               </div>

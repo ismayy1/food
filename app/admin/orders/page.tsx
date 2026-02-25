@@ -1,24 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Filter } from "lucide-react";
+import useSWR from "swr";
+import { Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+}
 
 interface Order {
   id: string;
   customer: string;
   phone: string;
-  items: string;
+  items: OrderItem[];
   total: number;
   status: "pending" | "preparing" | "ready" | "delivered" | "cancelled";
   type: "pickup" | "delivery";
@@ -26,71 +26,7 @@ interface Order {
   time: string;
 }
 
-const initialOrders: Order[] = [
-  {
-    id: "ORD-001",
-    customer: "Maria Ionescu",
-    phone: "0721 123 456",
-    items: "2x Classic Falafel Wrap, 1x Creamy Hummus",
-    total: 59,
-    status: "preparing",
-    type: "pickup",
-    time: "14:23",
-  },
-  {
-    id: "ORD-002",
-    customer: "Alexandru Popescu",
-    phone: "0732 234 567",
-    items: "1x Family Combo",
-    total: 65,
-    status: "ready",
-    type: "delivery",
-    address: "Str. Floreasca 25, Bucuresti",
-    time: "14:15",
-  },
-  {
-    id: "ORD-003",
-    customer: "Sophie Laurent",
-    phone: "0743 345 678",
-    items: "1x Spicy Falafel Wrap, 1x Fresh Lemonade",
-    total: 37,
-    status: "delivered",
-    type: "delivery",
-    address: "Bd. Pipera 10, Bucuresti",
-    time: "13:45",
-  },
-  {
-    id: "ORD-004",
-    customer: "Andrei Dragomir",
-    phone: "0754 456 789",
-    items: "1x Mixed Platter, 2x Ayran",
-    total: 60,
-    status: "pending",
-    type: "pickup",
-    time: "14:30",
-  },
-  {
-    id: "ORD-005",
-    customer: "Elena Vasilescu",
-    phone: "0765 567 890",
-    items: "1x Mediterranean Wrap, 1x Turkish Tea",
-    total: 36,
-    status: "preparing",
-    type: "pickup",
-    time: "14:20",
-  },
-  {
-    id: "ORD-006",
-    customer: "Radu Mihailescu",
-    phone: "0776 678 901",
-    items: "1x Falafel Platter, 1x Fresh Orange Juice",
-    total: 49,
-    status: "cancelled",
-    type: "delivery",
-    address: "Str. Dorobanti 50, Bucuresti",
-    time: "13:30",
-  },
-];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const statusColors: Record<string, string> = {
   pending: "bg-accent text-accent-foreground",
@@ -100,10 +36,10 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-destructive/15 text-destructive",
 };
 
-const statusOptions = ["all", "pending", "preparing", "ready", "delivered", "cancelled"];
-
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState(initialOrders);
+  const { data: orders = [], mutate, isLoading } = useSWR<Order[]>("/api/orders", fetcher, {
+    refreshInterval: 10000,
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -116,9 +52,29 @@ export default function AdminOrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  function updateStatus(id: string, newStatus: Order["status"]) {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+  async function updateStatus(id: string, newStatus: Order["status"]) {
+    try {
+      await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      await mutate();
+    } catch (error) {
+      console.error("Failed to update order status:", error);
+    }
+  }
+
+  function formatItems(items: OrderItem[]): string {
+    if (!Array.isArray(items)) return String(items);
+    return items.map((i) => `${i.quantity}x ${i.name}`).join(", ");
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
@@ -183,7 +139,7 @@ export default function AdminOrdersPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-card-foreground">
-                    {order.id}
+                    ORD-{order.id.padStart(3, "0")}
                   </span>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
@@ -206,7 +162,7 @@ export default function AdminOrdersPage() {
                   </p>
                 )}
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {order.items}
+                  {formatItems(order.items)}
                 </p>
               </div>
               <div className="text-right">

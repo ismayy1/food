@@ -3,10 +3,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { menuItems } from "@/lib/data";
+import { getMenuItems } from "@/lib/queries";
 
-export function MenuPreview() {
-  const popularItems = menuItems.filter((item) => item.popular).slice(0, 4);
+export async function MenuPreview() {
+  const allItems = await getMenuItems();
+  const popularItems = allItems.filter((item) => item.popular).slice(0, 4);
 
   return (
     <section className="bg-secondary/50 py-20">

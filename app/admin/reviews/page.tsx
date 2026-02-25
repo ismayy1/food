@@ -1,35 +1,61 @@
 "use client";
 
-import { useState } from "react";
-import { Star, Eye, EyeOff, Trash2 } from "lucide-react";
+import useSWR from "swr";
+import { Star, Eye, EyeOff, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { reviews as initialReviews, businessInfo, type Review } from "@/lib/data";
+import { businessInfo } from "@/lib/data";
 
-interface AdminReview extends Review {
+interface AdminReview {
+  id: string;
+  name: string;
+  rating: number;
+  text: string;
+  date: string;
   visible: boolean;
 }
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export default function AdminReviewsPage() {
-  const [reviews, setReviews] = useState<AdminReview[]>(
-    initialReviews.map((r) => ({ ...r, visible: true }))
+  const { data: reviews = [], mutate, isLoading } = useSWR<AdminReview[]>(
+    "/api/reviews?all=true",
+    fetcher
   );
 
-  function toggleVisibility(id: string) {
-    setReviews((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, visible: !r.visible } : r))
-    );
+  async function toggleVisibility(id: string, currentVisible: boolean) {
+    try {
+      await fetch(`/api/reviews/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visible: !currentVisible }),
+      });
+      await mutate();
+    } catch (error) {
+      console.error("Failed to toggle review visibility:", error);
+    }
   }
 
-  function deleteReview(id: string) {
-    setReviews((prev) => prev.filter((r) => r.id !== id));
+  async function deleteReview(id: string) {
+    try {
+      await fetch(`/api/reviews/${id}`, { method: "DELETE" });
+      await mutate();
+    } catch (error) {
+      console.error("Failed to delete review:", error);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const avgRating =
     reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(
-          1
-        )
+      ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
       : "0";
 
   return (
@@ -117,7 +143,7 @@ export default function AdminReviewsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toggleVisibility(review.id)}
+                onClick={() => toggleVisibility(review.id, review.visible)}
                 className="gap-1.5 rounded-lg text-xs"
               >
                 {review.visible ? (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MenuPageClient } from "./menu-client";
+import { getMenuItems } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: "Menu | Falafilo Food - Falafel Wraps, Platters & More",
@@ -7,6 +8,9 @@ export const metadata: Metadata = {
     "Browse our full menu of authentic falafel wraps, platters, sides, salads and drinks. Affordable prices from 20-40 lei.",
 };
 
-export default function MenuPage() {
-  return <MenuPageClient />;
+export const dynamic = "force-dynamic";
+
+export default async function MenuPage() {
+  const items = await getMenuItems();
+  return <MenuPageClient initialItems={items} />;
 }

@@ -5,16 +5,20 @@ import { useState } from "react";
 import { Plus, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { menuItems, categories } from "@/lib/data";
+import { categories, type MenuItem } from "@/lib/data";
 import { useCart } from "@/lib/cart-context";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export function MenuPageClient() {
+interface MenuPageClientProps {
+  initialItems: MenuItem[];
+}
+
+export function MenuPageClient({ initialItems }: MenuPageClientProps) {
   const [activeCategory, setActiveCategory] = useState<string>("wraps");
   const { addItem, totalItems } = useCart();
 
-  const filteredItems = menuItems.filter(
+  const filteredItems = initialItems.filter(
     (item) => item.category === activeCategory
   );
 
